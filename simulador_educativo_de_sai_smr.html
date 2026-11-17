@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Educativo de SAI - SMR</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+            overflow-x: hidden;
+        }
+        .formula-box {
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -0.02em;
+        }
+        .fade-in {
+            animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .eli5-box {
+            transition: all 0.3s ease;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- HEADER SUPERIOR Y BARRA DE PROGRESO -->
+    <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-xl border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <!-- Logo y Título -->
+                <div class="flex items-center space-x-3">
+                    <div class="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center">
+                        <i data-lucide="battery-charging" class="w-7 h-7 text-white"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-white">AulaSAI <span class="text-blue-400">SMR</span></h1>
+                            <span class="bg-blue-500/20 text-blue-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-blue-500/30">Grado Medio</span>
+                        </div>
+                        <p class="text-xs text-slate-400 hidden sm:block">Simulador interactivo de Sistemas de Alimentación Ininterrumpida</p>
+                    </div>
+                </div>
+
+                <!-- Controles Globales: Progreso, Modo Fácil y Calculadora -->
+                <div class="flex items-center gap-3 sm:gap-4 ml-auto">
+                    <!-- Barra de Progreso del Curso -->
+                    <div class="hidden md:flex flex-col w-44 bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-700">
+                        <div class="flex justify-between text-[11px] font-medium text-slate-300 mb-1">
+                            <span>Tu dominio del tema</span>
+                            <span id="progress-text" class="text-blue-400 font-bold">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+                            <div id="progress-bar" class="bg-gradient-to-r from-blue-500 to-emerald-400 h-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Botón Global: Explícamelo más fácil -->
+                    <button onclick="toggleEasyMode()" id="btn-easy-mode" class="flex items-center gap-2 px-3.5 py-2 rounded-xl font-semibold text-xs sm:text-sm transition-all duration-200 bg-amber-500/15 text-amber-300 border border-amber-500/40 hover:bg-amber-500/25 active:scale-95">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+                        <span>Explícamelo más fácil</span>
+                        <span id="easy-mode-badge" class="bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold">OFF</span>
+                    </button>
+
+                    <!-- Botón Calculadora Flotante -->
+                    <button onclick="toggleMiniCalc()" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl font-semibold text-xs sm:text-sm shadow-md shadow-blue-600/25 transition-all active:scale-95" title="Abrir calculadora de bolsillo">
+                        <i data-lucide="calculator" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Calculadora</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pestañas de Navegación -->
+            <nav class="flex space-x-1 overflow-x-auto pt-3 pb-1 no-scrollbar border-t border-slate-800/80 mt-3">
+                <button onclick="switchTab('teoria')" id="tab-btn-teoria" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-all bg-blue-600 text-white shadow-sm">
+                    <i data-lucide="book-open" class="w-4 h-4"></i>
+                    <span>1. Fórmulas y 1,30 vs 0,70</span>
+                </button>
+                <button onclick="switchTab('ejercicio')" id="tab-btn-ejercicio" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-800 transition-all">
+                    <i data-lucide="list-checks" class="w-4 h-4"></i>
+                    <span>2. Ejercicio de Clase</span>
+                </button>
+                <button onclick="switchTab('calculadora')" id="tab-btn-calculadora" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-800 transition-all">
+                    <i data-lucide="cpu" class="w-4 h-4"></i>
+                    <span>3. Simulador de SAI</span>
+                </button>
+                <button onclick="switchTab('practica')" id="tab-btn-practica" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-800 transition-all">
+                    <i data-lucide="dumbbell" class="w-4 h-4"></i>
+                    <span>4. Modo Práctica</span>
+                </button>
+                <button onclick="switchTab('examen')" id="tab-btn-examen" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-800 transition-all">
+                    <i data-lucide="award" class="w-4 h-4"></i>
+                    <span>5. Modo Examen (10 preg.)</span>
+                </button>
+                <button onclick="switchTab('chuleta')" id="tab-btn-chuleta" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-800 transition-all">
+                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                    <span>6. Resumen y Ejemplos</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- BANNER ACTIVO DE "EXPLÍCAMELO MÁS FÁCIL" -->
+    <div id="easy-mode-banner" class="hidden bg-amber-50 border-b border-amber-200 px-4 py-2.5 text-amber-900">
+        <div class="max-w-7xl mx-auto flex items-center justify-between text-xs sm:text-sm">
+            <div class="flex items-center gap-2">
+                <span class="bg-amber-400 text-slate-950 font-extrabold px-2 py-0.5 rounded-md text-xs">MODO SENCILLO ACTIVO</span>
+                <span>Estás viendo todas las explicaciones traducidas a ejemplos de la vida real sin tecnicismos.</span>
+            </div>
+            <button onclick="toggleEasyMode()" class="text-amber-700 hover:text-amber-950 font-semibold underline ml-4 whitespace-nowrap">Desactivar</button>
+        </div>
+    </div>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+        <!-- ==========================================
+             SECCIÓN 1: TEORÍA Y FÓRMULAS
+             ========================================== -->
+        <section id="tab-teoria" class="tab-content fade-in space-y-8">
+            <!-- Hero Introductorio -->
+            <div class="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl border border-blue-900/40">
+                <div class="max-w-3xl space-y-3">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                        <i data-lucide="zap" class="w-3.5 h-3.5"></i> Fundamentos sin memorizar a ciegas
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Comprende las 4 fórmulas del SAI de una vez por todas</h2>
+                    <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                        Un <strong>SAI (Sistema de Alimentación Ininterrumpida)</strong> es una batería inteligente que protege los ordenadores cuando se corta la luz. Para saber cuántos ordenadores aguanta, solo necesitamos distinguir entre la <strong>energía total que circula (VA)</strong> y la <strong>energía real que aprovechan los equipos (W)</strong>.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Tarjetas de las 4 Fórmulas Principales -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Fórmula 1: Potencia Aparente -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:border-blue-400 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">1. Potencia Aparente (VA)</span>
+                            <button onclick="toggleCardEasy('easy-f1')" class="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                                <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Explícamelo más fácil
+                            </button>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">¿Cuánta electricidad total entrega el SAI?</h3>
+                        <p class="text-sm text-slate-600 mb-4">
+                            Se mide en <strong>Voltiamperios (VA)</strong>. Es la capacidad bruta del SAI antes de descontar pérdidas o márgenes de seguridad.
+                        </p>
+                        <!-- Caja de Fórmula Grande -->
+                        <div class="bg-slate-900 text-white p-5 rounded-xl text-center my-4 shadow-inner border border-slate-800">
+                            <div class="formula-box text-2xl sm:text-3xl font-bold text-blue-400 tracking-wide">
+                                VA = V × A
+                            </div>
+                            <div class="text-xs text-slate-400 mt-2">
+                                Voltiamperios = Voltios (V) × Amperios (A)
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="bg-blue-50/70 rounded-xl p-3.5 border border-blue-100 text-xs sm:text-sm text-slate-700">
+                            <strong>Ejemplo rápido:</strong> Si en la etiqueta del SAI pone <span class="font-mono font-bold">230 V</span> y <span class="font-mono font-bold">10 A</span>:<br>
+                            <span class="font-mono text-blue-700 font-bold">VA = 230 × 10 = 2300 VA</span>
+                        </div>
+                        <!-- Explicación Sencilla Oculta/Visible -->
+                        <div id="easy-f1" class="eli5-box hidden mt-3 bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs sm:text-sm text-amber-950">
+                            <strong>🥤 Imagina una tubería de agua:</strong><br>
+                            Los <strong>Voltios (V)</strong> son la fuerza con la que empuja el agua, y los <strong>Amperios (A)</strong> son el grosor de la tubería. Si multiplicas los dos (<span class="font-mono font-bold">V × A</span>), sabes el chorro total que sale del grifo.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fórmula 2: Potencia Activa -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:border-blue-400 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full">2. Potencia Activa o Real (W)</span>
+                            <button onclick="toggleCardEasy('easy-f2')" class="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                                <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Explícamelo más fácil
+                            </button>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">¿Cuánta potencia útil llega a los PC?</h3>
+                        <p class="text-sm text-slate-600 mb-4">
+                            Se mide en <strong>Vatios (W)</strong>. Como parte de la energía se pierde en calor, multiplicamos los VA por el <strong>factor de potencia (f.d.p.)</strong>, que siempre es un número menor que 1 (como 0,6 o 0,8).
+                        </p>
+                        <!-- Caja de Fórmula Grande -->
+                        <div class="bg-slate-900 text-white p-5 rounded-xl text-center my-4 shadow-inner border border-slate-800">
+                            <div class="formula-box text-2xl sm:text-3xl font-bold text-emerald-400 tracking-wide">
+                                W = VA × f.d.p.
+                            </div>
+                            <div class="text-xs text-slate-400 mt-2">
+                                Vatios = Voltiamperios × Factor de Potencia
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="bg-emerald-50/70 rounded-xl p-3.5 border border-emerald-100 text-xs sm:text-sm text-slate-700">
+                            <strong>Ejemplo rápido:</strong> Si tenemos <span class="font-mono font-bold">2000 VA</span> y un factor de potencia de <span class="font-mono font-bold">0,6</span>:<br>
+                            <span class="font-mono text-emerald-700 font-bold">W = 2000 × 0,6 = 1200 W reales</span>
+                        </div>
+                        <div id="easy-f2" class="eli5-box hidden mt-3 bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs sm:text-sm text-amber-950">
+                            <strong>🍺 El ejemplo del vaso con espuma:</strong><br>
+                            Los <strong>VA</strong> son el vaso entero (líquido + espuma). Los <strong>W (Vatios)</strong> son solo el refresco líquido que te puedes beber. Si el factor de potencia es <strong>0,6</strong>, significa que el 60% del vaso es líquido útil y el 40% es espuma que no alimenta a los ordenadores.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fórmula 3: Factor de Potencia -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:border-blue-400 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1 rounded-full">3. Factor de Potencia (f.d.p.)</span>
+                            <button onclick="toggleCardEasy('easy-f3')" class="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                                <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Explícamelo más fácil
+                            </button>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">¿Qué eficiencia tiene nuestro SAI?</h3>
+                        <p class="text-sm text-slate-600 mb-4">
+                            Si ya conoces los Vatios reales (W) y los Voltiamperios totales (VA), puedes averiguar el factor de potencia dividiendo la parte útil entre el total.
+                        </p>
+                        <!-- Caja de Fórmula Grande -->
+                        <div class="bg-slate-900 text-white p-5 rounded-xl text-center my-4 shadow-inner border border-slate-800">
+                            <div class="formula-box text-2xl sm:text-3xl font-bold text-purple-400 tracking-wide">
+                                f.d.p. = W / VA
+                            </div>
+                            <div class="text-xs text-slate-400 mt-2">
+                                Factor de potencia = Vatios (pequeño) / Voltiamperios (grande)
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="bg-purple-50/70 rounded-xl p-3.5 border border-purple-100 text-xs sm:text-sm text-slate-700">
+                            <strong>Ejemplo rápido:</strong> Un SAI de <span class="font-mono font-bold">1000 VA</span> entrega <span class="font-mono font-bold">800 W</span>:<br>
+                            <span class="font-mono text-purple-700 font-bold">f.d.p. = 800 / 1000 = 0,8</span>
+                        </div>
+                        <div id="easy-f3" class="eli5-box hidden mt-3 bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs sm:text-sm text-amber-950">
+                            <strong>🎯 Truco infalible para no dividir al revés:</strong><br>
+                            El factor de potencia en un SAI <strong>nunca puede ser mayor que 1</strong> (suele estar entre 0,5 y 0,9). Si divides y te sale 1,45, ¡has dividido al revés! Divide siempre el número pequeño (W) entre el grande (VA).
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fórmula 4: Eliminar Incremento del 30% -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:border-blue-400 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full">4. Protección del 30 % (Criterio de Clase)</span>
+                            <button onclick="toggleCardEasy('easy-f4')" class="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                                <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Explícamelo más fácil
+                            </button>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">Eliminar un incremento de seguridad del 30 %</h3>
+                        <p class="text-sm text-slate-600 mb-4">
+                            Para no sobrecargar el SAI con los picos de arranque, exigimos que el SAI sea un <strong>30 % más grande</strong> que el consumo de nuestros equipos. Para deshacer ese +30 % y saber la carga base segura, <strong>dividimos entre 1,30</strong>.
+                        </p>
+                        <!-- Caja de Fórmula Grande -->
+                        <div class="bg-slate-900 text-white p-5 rounded-xl text-center my-4 shadow-inner border border-slate-800">
+                            <div class="formula-box text-xl sm:text-2xl font-bold text-indigo-400 tracking-wide">
+                                VA disponible = VA / 1,30
+                            </div>
+                            <div class="text-xs text-slate-400 mt-2">
+                                Si fuera un 20 % sería / 1,20 · Si fuera un 25 % sería / 1,25
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="bg-indigo-50/70 rounded-xl p-3.5 border border-indigo-100 text-xs sm:text-sm text-slate-700">
+                            <strong>Ejemplo de clase:</strong> Con un SAI de <span class="font-mono font-bold">2300 VA</span> y protección del 30 %:<br>
+                            <span class="font-mono text-indigo-700 font-bold">VA disponible = 2300 / 1,30 = 1769,23 VA</span>
+                        </div>
+                        <div id="easy-f4" class="eli5-box hidden mt-3 bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs sm:text-sm text-amber-950">
+                            <strong>🏷️ Como quitar el IVA de un ticket:</strong><br>
+                            Si tus ordenadores necesitan una potencia base y le sumas un <strong>+30 % de margen</strong> para elegir el SAI, estás multiplicando por <span class="font-mono font-bold">1,30</span>. Por tanto, cuando te dan el SAI ya comprado y quieres volver atrás para saber la potencia base, tienes que hacer la operación contraria: <strong>dividir entre 1,30</strong>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COMPARATIVA ESPECIAL: DIVIDIR ENTRE 1,30 VS MULTIPLICAR POR 0,70 -->
+            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-md border-2 border-blue-600/20">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+                    <div>
+                        <span class="bg-rose-100 text-rose-700 text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">¡Pregunta típica de examen!</span>
+                        <h3 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
+                            ¿Por qué dividir entre 1,30 NO es igual que multiplicar por 0,70?
+                        </h3>
+                        <p class="text-sm text-slate-600 mt-1">
+                            Muchos alumnos piensan: <em>«Si quito un 30 %, me queda el 70 %, así que multiplico por 0,70»</em>. <strong>¡Cuidado! Son dos operaciones matemáticas distintas.</strong>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Ejemplo Cotidiano Interactivo -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <!-- Columna 1: Dividir entre 1,30 -->
+                    <div class="bg-blue-50/60 rounded-2xl p-5 border-2 border-blue-500/40 relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-lg">CRITERIO DE CLASE: Dividir entre 1,30</span>
+                            <span class="font-mono font-bold text-blue-700 text-lg">VA / 1,30</span>
+                        </div>
+                        <h4 class="font-bold text-slate-900 text-base mb-2">Elimina un incremento previo del 30 %</h4>
+                        <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mb-4">
+                            <strong>Ejemplo cotidiano (Tienda de informática):</strong><br>
+                            Una tarjeta gráfica cuesta <strong>100 €</strong> en fábrica. La tienda le añade un <strong>incremento del 30 %</strong> de beneficio (<span class="font-mono">100 × 1,30</span>) y pone en el escaparate <strong>130 €</strong>.
+                        </p>
+                        <div class="bg-white p-4 rounded-xl border border-blue-200 space-y-2 text-xs sm:text-sm">
+                            <p class="font-semibold text-slate-800">Si solo ves el precio final de 130 €, ¿cómo recuperas los 100 € originales?</p>
+                            <div class="font-mono text-emerald-700 font-bold bg-emerald-50 p-2.5 rounded-lg border border-emerald-200">
+                                ✅ 130 € / 1,30 = 100 € (Recuperas el valor exacto antes del +30 %)
+                            </div>
+                            <p class="text-slate-500 text-xs">
+                                En nuestro SAI de <strong>2300 VA</strong>: <span class="font-mono font-bold text-slate-800">2300 / 1,30 = 1769,23 VA</span> (porque <span class="font-mono">1769,23 + 30% = 2300 VA</span>).
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Columna 2: Multiplicar por 0,70 -->
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-300 relative">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded-lg">OTRO CRITERIO: Multiplicar por 0,70</span>
+                            <span class="font-mono font-bold text-slate-700 text-lg">VA × 0,70</span>
+                        </div>
+                        <h4 class="font-bold text-slate-900 text-base mb-2">Aplica una reducción o descuento directo del 30 %</h4>
+                        <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mb-4">
+                            <strong>Volvamos a la tarjeta gráfica de 130 €:</strong><br>
+                            Si llega el Black Friday y hacen una <strong>rebaja directa del 30 %</strong> sobre los 130 € (<span class="font-mono">130 × 0,70</span>), ¡no vuelve a costar 100 €, sino <strong>91 €</strong>! Porque el 30 % se calcula sobre un número más grande (130 €).
+                        </p>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-2 text-xs sm:text-sm">
+                            <p class="font-semibold text-slate-800">¿Qué pasa si multiplicas por 0,70 los 130 €?</p>
+                            <div class="font-mono text-amber-800 font-bold bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                                ⚠️ 130 € × 0,70 = 91 € (Quitas el 30 % del total, no deshaces el incremento)
+                            </div>
+                            <p class="text-slate-500 text-xs">
+                                En un SAI de <strong>2300 VA</strong>: <span class="font-mono font-bold text-slate-800">2300 × 0,70 = 1610 VA</span> (son 159,23 VA menos que con el método de clase).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Probador interactivo en vivo de ambos métodos -->
+                <div class="mt-6 bg-slate-900 text-white rounded-xl p-5 border border-slate-800">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                            <h4 class="font-bold text-sm sm:text-base text-blue-300 flex items-center gap-2">
+                                <i data-lucide="sliders" class="w-4 h-4"></i> Comprueba tú mismo la diferencia con cualquier cantidad:
+                            </h4>
+                            <p class="text-xs text-slate-400">Cambia los VA o el porcentaje y observa cómo dan resultados distintos.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div>
+                                <label class="block text-[10px] text-slate-400 uppercase">Capacidad (VA)</label>
+                                <input type="number" id="comp-va" value="2300" oninput="updateComparisonWidget()" class="w-28 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-mono font-bold text-white focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-400 uppercase">Margen (%)</label>
+                                <input type="number" id="comp-pct" value="30" oninput="updateComparisonWidget()" class="w-20 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-mono font-bold text-white focus:outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-800 text-xs sm:text-sm">
+                        <div class="bg-blue-950/60 border border-blue-500/30 rounded-lg p-3 flex justify-between items-center">
+                            <div>
+                                <span class="text-blue-300 font-semibold block">Eliminando incremento previo (Clase):</span>
+                                <span id="comp-formula-div" class="font-mono text-slate-300">2300 / 1,30</span>
+                            </div>
+                            <span id="comp-res-div" class="font-mono text-lg font-extrabold text-emerald-400">1769,23 VA</span>
+                        </div>
+                        <div class="bg-slate-800/70 border border-slate-700 rounded-lg p-3 flex justify-between items-center">
+                            <div>
+                                <span class="text-slate-300 font-semibold block">Reducción directa sobre el total:</span>
+                                <span id="comp-formula-mul" class="font-mono text-slate-400">2300 × 0,70</span>
+                            </div>
+                            <span id="comp-res-mul" class="font-mono text-lg font-extrabold text-amber-400">1610,00 VA</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botón para avanzar al Ejercicio Principal -->
+            <div class="flex justify-end">
+                <button onclick="markTheoryRead(); switchTab('ejercicio')" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg shadow-blue-600/20 transition-all">
+                    <span>Ir al Ejercicio Principal Explicado Paso a Paso</span>
+                    <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SECCIÓN 2: EJERCICIO PRINCIPAL DE CLASE
+             ========================================== -->
+        <section id="tab-ejercicio" class="tab-content hidden fade-in space-y-6">
+            <!-- Enunciado Oficial de Clase -->
+            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border-2 border-blue-600">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <span class="bg-blue-600 text-white text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wide">Ejercicio Oficial de Clase (SMR)</span>
+                    <div class="flex gap-2">
+                        <button onclick="showAllClassSteps()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-lg transition-all">
+                            Ver todos los pasos de golpe
+                        </button>
+                        <button onclick="resetClassSteps()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-lg transition-all">
+                            Reiniciar paso a paso
+                        </button>
+                    </div>
+                </div>
+                <p class="text-base sm:text-xl font-bold text-slate-900 leading-relaxed bg-blue-50/70 p-4 sm:p-5 rounded-xl border border-blue-200">
+                    «Un SAI suministra <span class="text-blue-700 underline decoration-2">230 voltios</span> y <span class="text-blue-700 underline decoration-2">10 amperios</span>. Su factor de potencia es <span class="text-blue-700 underline decoration-2">0,6</span>. ¿Cuántos equipos de <span class="text-blue-700 underline decoration-2">230 W</span> podemos conectar aplicando el procedimiento de <span class="text-blue-700 underline decoration-2">protección del 30 %</span> utilizado en clase?»
+                </p>
+
+                <!-- Resumen Visual de Datos -->
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+                        <span class="text-[11px] text-slate-500 font-semibold uppercase block">Voltaje (V)</span>
+                        <span class="font-mono text-lg font-extrabold text-slate-900">230 V</span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+                        <span class="text-[11px] text-slate-500 font-semibold uppercase block">Amperaje (A)</span>
+                        <span class="font-mono text-lg font-extrabold text-slate-900">10 A</span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+                        <span class="text-[11px] text-slate-500 font-semibold uppercase block">Factor Potencia</span>
+                        <span class="font-mono text-lg font-extrabold text-slate-900">0,6</span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+                        <span class="text-[11px] text-slate-500 font-semibold uppercase block">Protección</span>
+                        <span class="font-mono text-lg font-extrabold text-blue-700">30 % (/ 1,30)</span>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center col-span-2 sm:col-span-1">
+                        <span class="text-[11px] text-slate-500 font-semibold uppercase block">Consumo 1 PC</span>
+                        <span class="font-mono text-lg font-extrabold text-slate-900">230 W</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenedor de los 5 Pasos Interactivos -->
+            <div class="space-y-4">
+                
+                <!-- PASO 1 -->
+                <div id="step-card-1" class="bg-white rounded-2xl p-6 shadow-sm border-2 border-blue-500 transition-all">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-sm">1</span>
+                            <h3 class="text-base sm:text-lg font-bold text-slate-900">Calcular la Potencia Aparente Total (VA)</h3>
+                        </div>
+                        <button onclick="toggleCardEasy('easy-step-1')" class="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                            <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Explícamelo más fácil
+                        </button>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-4">
+                        Multiplicamos los voltios por los amperios para saber cuánta potencia aparente total suministra el SAI en bruto.
+                    </p>
+                    <div class="bg-slate-900 text-white p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <span class="text-xs text-slate-400 font-mono">Fórmula: VA = V × A</span>
+                        <span class="formula-box text-xl sm:text-2xl font-bold text-blue-400">230 × 10 = 2300 VA</span>
+                    </div>
+                    <div id="easy-step-1" class="eli5-box hidden mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs sm:text-sm text-amber-950">
+                        💡 <strong>En palabras sencillas:</strong> Juntamos la fuerza del enchufe (230 V) con el caudal eléctrico (10 A). Eso nos dice que el SAI tiene un motor capaz de mover <strong>2300 VA</strong> en total.
+                    </div>
+                </div>
+
+                <!-- PASO 2 -->
+                <div id="step-card-2" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 transition-all">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-sm">2</span>
+                            <h3 class="text-base sm:text-lg font-bold text-slate-900">Aplicar la protección del 30 % (eliminar incremento)</h3>
+                        </div>
+                        <button onclick="toggleCardEasy('easy-step-2')" class="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                            <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Explícamelo más fácil
+                        </button>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-4">
+                        Siguiendo el procedimiento de clase, dividimos los 2300 VA entre <strong>1,30</strong> para quitar el margen de seguridad del 30 % y quedarnos solo con los VA que podemos usar sin peligro.
+                    </p>
+                    <div class="bg-slate-900 text-white p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <span class="text-xs text-slate-400 font-mono">Fórmula: VA disponibles = VA / 1,30</span>
+                        <span class="formula-box text-xl sm:text-2xl font-bold text-indigo-400">2300 / 1,30 = 1769,23 VA</span>
+                    </div>
+                    <div id="easy-step-2" class="eli5-box hidden mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs sm:text-sm text-amber-950">
+                        💡 <strong>¿Por qué dividimos?</strong> Porque no queremos llevar el SAI al límite. Al dividir entre 1,30 reservamos un colchón del 30 % para picos de tensión. Así sabemos que nuestra carga segura es de <strong>1769,23 VA</strong>.
+                    </div>
+                </div>
+
+                <!-- PASO 3 -->
+                <div id="step-card-3" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 transition-all">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-sm">3</span>
+                            <h3 class="text-base sm:text-lg font-bold text-slate-900">Pasar a Potencia Activa en Vatios (W)</h3>
+                        </div>
+                        <button onclick="toggleCardEasy('easy-step-3')" class="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                            <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Explícamelo más fácil
+                        </button>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-4">
+                        Los ordenadores piden su consumo en Vatios (W), no en VA. Multiplicamos los VA disponibles por el factor de potencia (<strong>0,6</strong>).
+                    </p>
+                    <div class="bg-slate-900 text-white p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <span class="text-xs text-slate-400 font-mono">Fórmula: W disponibles = VA disponibles × f.d.p.</span>
+                        <span class="formula-box text-xl sm:text-2xl font-bold text-emerald-400">1769,23 × 0,6 = 1061,54 W</span>
+                    </div>
+                    <div id="easy-step-3" class="eli5-box hidden mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs sm:text-sm text-amber-950">
+                        💡 <strong>Quitando la espuma:</strong> De los 1769,23 VA seguros, solo el 60 % (× 0,6) se convierte en electricidad real para las fuentes de alimentación. Nos quedan <strong>1061,54 W reales</strong> para repartir entre los ordenadores.
+                    </div>
+                </div>
+
+                <!-- PASO 4 -->
+                <div id="step-card-4" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 transition-all">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-sm">4</span>
+                            <h3 class="text-base sm:text-lg font-bold text-slate-900">Dividir entre el consumo de cada equipo (230 W)</h3>
+                        </div>
+                        <button onclick="toggleCardEasy('easy-step-4')" class="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                            <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> Explícamelo más fácil
+                        </button>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-4">
+                        Repartimos nuestros <strong>1061,54 W</strong> disponibles entre los <strong>230 W</strong> que gasta cada ordenador.
+                    </p>
+                    <div class="bg-slate-900 text-white p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <span class="text-xs text-slate-400 font-mono">Fórmula: Equipos = W disponibles / W por equipo</span>
+                        <span class="formula-box text-xl sm:text-2xl font-bold text-amber-400">1061,54 / 230 = 4,62</span>
+                    </div>
+                    <div id="easy-step-4" class="eli5-box hidden mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs sm:text-sm text-amber-950">
+                        💡 <strong>Como repartir dinero:</strong> Tienes 1061,54 € en el bolsillo y cada ordenador cuesta 230 €. Al dividir te da para <strong>4,62</strong> ordenadores.
+                    </div>
+                </div>
+
+                <!-- PASO 5: REDONDEO HACIA ABAJO -->
+                <div id="step-card-5" class="bg-emerald-50 rounded-2xl p-6 shadow-md border-2 border-emerald-500 transition-all">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full bg-emerald-600 text-white font-extrabold flex items-center justify-center text-sm">5</span>
+                            <h3 class="text-base sm:text-lg font-extrabold text-emerald-950">Resultado Final: 4 equipos completos (¿Por qué redondeamos hacia abajo?)</h3>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center mt-2">
+                        <div class="space-y-3 text-sm text-emerald-900">
+                            <p>
+                                En matemáticas normales, <span class="font-mono font-bold">4,62</span> se redondearía a 5. <strong>¡Pero en un SAI NUNCA se redondea hacia arriba!</strong>
+                            </p>
+                            <ul class="space-y-2 list-disc list-inside text-xs sm:text-sm">
+                                <li><strong>4 equipos</strong> consumen: <span class="font-mono font-bold">4 × 230 W = 920 W</span> (Nos sobran 141,54 W, el SAI funciona perfecto ✅).</li>
+                                <li><strong>5 equipos</strong> consumirían: <span class="font-mono font-bold">5 × 230 W = 1150 W</span> (Supera los 1061,54 W seguros ❌, invadiendo el margen de protección y provocando sobrecarga).</li>
+                                <li>Además, no puedes enchufar <em>«0,62 partes de un ordenador»</em>.</li>
+                            </ul>
+                        </div>
+
+                        <!-- Representación visual de los 4 equipos + el 5º rechazado -->
+                        <div class="bg-white p-4 rounded-xl border border-emerald-200">
+                            <div class="text-xs font-bold text-slate-500 uppercase mb-3 text-center">Simulación Visual de Conexión (Máx. 1061,54 W)</div>
+                            <div class="grid grid-cols-5 gap-2 text-center">
+                                <div class="bg-emerald-100 border border-emerald-400 p-2 rounded-lg">
+                                    <i data-lucide="monitor" class="w-6 h-6 mx-auto text-emerald-700"></i>
+                                    <span class="text-[11px] font-bold text-emerald-900 block mt-1">PC 1</span>
+                                    <span class="text-[10px] font-mono text-emerald-700">230 W</span>
+                                </div>
+                                <div class="bg-emerald-100 border border-emerald-400 p-2 rounded-lg">
+                                    <i data-lucide="monitor" class="w-6 h-6 mx-auto text-emerald-700"></i>
+                                    <span class="text-[11px] font-bold text-emerald-900 block mt-1">PC 2</span>
+                                    <span class="text-[10px] font-mono text-emerald-700">230 W</span>
+                                </div>
+                                <div class="bg-emerald-100 border border-emerald-400 p-2 rounded-lg">
+                                    <i data-lucide="monitor" class="w-6 h-6 mx-auto text-emerald-700"></i>
+                                    <span class="text-[11px] font-bold text-emerald-900 block mt-1">PC 3</span>
+                                    <span class="text-[10px] font-mono text-emerald-700">230 W</span>
+                                </div>
+                                <div class="bg-emerald-100 border border-emerald-400 p-2 rounded-lg">
+                                    <i data-lucide="monitor" class="w-6 h-6 mx-auto text-emerald-700"></i>
+                                    <span class="text-[11px] font-bold text-emerald-900 block mt-1">PC 4</span>
+                                    <span class="text-[10px] font-mono text-emerald-700">230 W</span>
+                                </div>
+                                <div class="bg-rose-50 border border-dashed border-rose-400 p-2 rounded-lg opacity-75">
+                                    <i data-lucide="monitor-off" class="w-6 h-6 mx-auto text-rose-600"></i>
+                                    <span class="text-[11px] font-bold text-rose-800 block mt-1">PC 5 (No)</span>
+                                    <span class="text-[10px] font-mono text-rose-600">Faltan 88W</span>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-center bg-emerald-600 text-white font-extrabold py-2 rounded-lg text-sm">
+                                Solución: Se pueden conectar 4 equipos completos
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SECCIÓN 3: CALCULADORA / SIMULADOR DE SAI
+             ========================================== -->
+        <section id="tab-calculadora" class="tab-content hidden fade-in space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Panel de Entrada de Datos (5 columnas) -->
+                <div class="lg:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-5">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <div>
+                            <h2 class="text-lg font-extrabold text-slate-900">Parámetros del SAI</h2>
+                            <p class="text-xs text-slate-500">Modifica cualquier valor y observa los cálculos al instante</p>
+                        </div>
+                        <button onclick="loadClassPreset()" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-3 py-1.5 rounded-lg border border-blue-200 transition-all">
+                            Cargar datos de clase
+                        </button>
+                    </div>
+
+                    <!-- Inputs numéricos -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Voltaje (V)</label>
+                            <div class="relative">
+                                <input type="number" id="calc-v" value="230" min="1" step="any" oninput="runSaiCalculator()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <span class="absolute right-3 top-2.5 text-xs font-bold text-slate-400">V</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Amperaje (A)</label>
+                            <div class="relative">
+                                <input type="number" id="calc-a" value="10" min="0.1" step="any" oninput="runSaiCalculator()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <span class="absolute right-3 top-2.5 text-xs font-bold text-slate-400">A</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Factor de potencia (0 a 1)</label>
+                            <input type="number" id="calc-fdp" value="0.6" min="0.1" max="1" step="0.05" oninput="runSaiCalculator()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">% de Protección</label>
+                            <div class="relative">
+                                <input type="number" id="calc-pct" value="30" min="0" max="90" step="1" oninput="runSaiCalculator()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <span class="absolute right-3 top-2.5 text-xs font-bold text-slate-400">%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Consumo de cada equipo (W)</label>
+                        <div class="relative">
+                            <input type="number" id="calc-pc-w" value="230" min="1" step="any" oninput="runSaiCalculator()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="absolute right-3 top-2.5 text-xs font-bold text-slate-400">W / equipo</span>
+                        </div>
+                    </div>
+
+                    <!-- Selector de Criterio Matemático -->
+                    <div class="pt-2 border-t border-slate-100">
+                        <label class="block text-xs font-bold text-slate-800 mb-2">Criterio para aplicar el porcentaje de protección:</label>
+                        <div class="space-y-2.5">
+                            <label class="flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all bg-blue-50/60 border-blue-600" id="label-crit-div">
+                                <input type="radio" name="calc-criterio" value="divide" checked onchange="runSaiCalculator()" class="mt-1 text-blue-600 focus:ring-blue-500">
+                                <div class="text-xs">
+                                    <span class="font-bold text-slate-900 block">1. Eliminar un incremento previo (Método de Clase)</span>
+                                    <span class="text-slate-600">Divide entre <span class="font-mono font-bold" id="crit-div-label-num">1,30</span>. Deshace un margen del +30 % añadido sobre la carga base.</span>
+                                </div>
+                            </label>
+                            <label class="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all bg-white border-slate-200 hover:bg-slate-50" id="label-crit-mul">
+                                <input type="radio" name="calc-criterio" value="multiply" onchange="runSaiCalculator()" class="mt-1 text-blue-600 focus:ring-blue-500">
+                                <div class="text-xs">
+                                    <span class="font-bold text-slate-900 block">2. Reservar directamente un % de capacidad</span>
+                                    <span class="text-slate-600">Multiplica por <span class="font-mono font-bold" id="crit-mul-label-num">0,70</span>. Reduce directamente un 30 % sobre los VA totales del SAI.</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel de Operaciones Paso a Paso y Resultado (7 columnas) -->
+                <div class="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col justify-between space-y-6">
+                    <div>
+                        <h3 class="text-lg font-extrabold text-slate-900 mb-4 flex items-center gap-2">
+                            <i data-lucide="terminal" class="w-5 h-5 text-blue-600"></i>
+                            Desarrollo automático paso a paso
+                        </h3>
+
+                        <!-- Pasos dinámicos -->
+                        <div class="space-y-3">
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <span class="text-xs font-bold text-slate-600">Paso 1: Potencia Aparente Total (VA = V × A)</span>
+                                <span id="sim-step-1" class="font-mono font-bold text-sm sm:text-base text-blue-700">230 × 10 = 2300 VA</span>
+                            </div>
+
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <span class="text-xs font-bold text-slate-600" id="sim-step-2-title">Paso 2: Quitar incremento del 30 % (VA / 1,30)</span>
+                                <span id="sim-step-2" class="font-mono font-bold text-sm sm:text-base text-indigo-700">2300 / 1,30 = 1769,23 VA</span>
+                            </div>
+
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <span class="text-xs font-bold text-slate-600">Paso 3: Potencia Activa Disponible (W = VA disp. × f.d.p.)</span>
+                                <span id="sim-step-3" class="font-mono font-bold text-sm sm:text-base text-emerald-700">1769,23 × 0,6 = 1061,54 W</span>
+                            </div>
+
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <span class="text-xs font-bold text-slate-600">Paso 4: División entre consumo por equipo</span>
+                                <span id="sim-step-4" class="font-mono font-bold text-sm sm:text-base text-amber-700">1061,54 / 230 = 4,62 equipos</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resultado Principal Destacado -->
+                    <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-lg border border-slate-800">
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div>
+                                <span class="text-xs uppercase font-bold tracking-wider text-blue-400 block">Resultado final redondeado hacia abajo</span>
+                                <div class="text-3xl sm:text-4xl font-extrabold mt-1">
+                                    <span id="sim-final-pcs" class="text-emerald-400">4</span> <span class="text-xl sm:text-2xl font-bold">equipos completos</span>
+                                </div>
+                                <p id="sim-power-summary" class="text-xs text-slate-400 mt-1">
+                                    Consumo real de los 4 equipos: 920 W (Sobran 141,54 W disponibles)
+                                </p>
+                            </div>
+                            <div class="bg-slate-800 px-4 py-3 rounded-xl border border-slate-700 text-xs text-slate-300 max-w-xs">
+                                <strong class="text-white block mb-1">Comparativa rápida entre criterios:</strong>
+                                <div class="flex justify-between gap-4">
+                                    <span>Con división (<span id="sim-cmp-div-lbl">/1,30</span>):</span>
+                                    <span id="sim-cmp-div-val" class="font-mono font-bold text-blue-400">4 PC (4,62)</span>
+                                </div>
+                                <div class="flex justify-between gap-4 mt-1">
+                                    <span>Con multiplicación (<span id="sim-cmp-mul-lbl">×0,70</span>):</span>
+                                    <span id="sim-cmp-mul-val" class="font-mono font-bold text-amber-400">4 PC (4,20)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SECCIÓN 4: MODO PRÁCTICA CON PISTAS
+             ========================================== -->
+        <section id="tab-practica" class="tab-content hidden fade-in space-y-6">
+            <!-- Barra de Selección de Nivel -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900">Entrenamiento Guiado con Pistas</h2>
+                    <p class="text-xs text-slate-500">Si fallas, no te daremos la respuesta directamente: te guiaremos con la fórmula exacta que necesitas.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="setPracticeLevel('facil')" id="btn-lvl-facil" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-emerald-600 text-white shadow-sm">
+                        Nivel Fácil (VA y W)
+                    </button>
+                    <button onclick="setPracticeLevel('medio')" id="btn-lvl-medio" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-slate-100 text-slate-700 hover:bg-slate-200">
+                        Nivel Medio (Protección %)
+                    </button>
+                    <button onclick="setPracticeLevel('dificil')" id="btn-lvl-dificil" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-slate-100 text-slate-700 hover:bg-slate-200">
+                        Nivel Difícil (Nº Equipos)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tarjeta del Ejercicio Activo -->
+            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
+                <div class="flex items-center justify-between">
+                    <span id="prac-badge" class="bg-emerald-100 text-emerald-800 text-xs font-extrabold px-3 py-1 rounded-full">
+                        NIVEL FÁCIL · Cálculos básicos
+                    </span>
+                    <button onclick="generatePracticeProblem()" class="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-3.5 py-2 rounded-xl border border-blue-200 transition-all">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        <span>Generar otro ejercicio</span>
+                    </button>
+                </div>
+
+                <!-- Enunciado generado -->
+                <div id="prac-statement" class="bg-slate-900 text-white p-5 sm:p-6 rounded-2xl text-base sm:text-lg font-medium leading-relaxed shadow-inner border border-slate-800">
+                    Cargando ejercicio...
+                </div>
+
+                <!-- Campos de respuesta dinámicos según el nivel -->
+                <div id="prac-inputs-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Se inyecta por JS -->
+                </div>
+
+                <!-- Botones de Comprobación -->
+                <div class="flex flex-wrap items-center gap-3 pt-2">
+                    <button onclick="checkPracticeAnswers()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl shadow-md shadow-blue-600/20 transition-all active:scale-95">
+                        <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                        <span>Comprobar respuesta</span>
+                    </button>
+                    <button onclick="toggleCardEasy('prac-easy-help')" class="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold px-4 py-3 rounded-xl border border-amber-200 text-xs sm:text-sm transition-all">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
+                        <span>Explícamelo más fácil</span>
+                    </button>
+                    <button onclick="showPracticeFullSolution()" id="btn-show-sol" class="hidden text-xs sm:text-sm font-bold text-slate-600 hover:text-slate-900 underline ml-auto">
+                        Ver solución resuelta paso a paso
+                    </button>
+                </div>
+
+                <!-- Ayuda "Explícamelo más fácil" del ejercicio actual -->
+                <div id="prac-easy-help" class="eli5-box hidden bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs sm:text-sm text-amber-950"></div>
+
+                <!-- Caja de Feedback / Pistas (Verde o Roja) -->
+                <div id="prac-feedback" class="hidden rounded-xl p-5 border text-sm"></div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SECCIÓN 5: MODO EXAMEN (10 PREGUNTAS)
+             ========================================== -->
+        <section id="tab-examen" class="tab-content hidden fade-in space-y-6">
+            <!-- Cabecera del Examen -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <span class="bg-blue-100 text-blue-800 text-xs font-extrabold px-3 py-1 rounded-full">EVALUACIÓN OFICIAL SMR</span>
+                    <h2 class="text-xl font-extrabold text-slate-900 mt-1">Simulador de Examen de SAI (10 Ejercicios)</h2>
+                    <p class="text-xs sm:text-sm text-slate-600">
+                        Responde a las 10 preguntas generadas aleatoriamente. Puedes usar la calculadora integrada (arriba a la derecha).
+                    </p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="startNewExam()" class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span>Generar Nuevo Examen</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Panel de Nota Final (oculto hasta entregar) -->
+            <div id="exam-result-banner" class="hidden rounded-2xl p-6 shadow-lg border-2">
+                <!-- Se rellena al corregir -->
+            </div>
+
+            <!-- Lista de las 10 Preguntas -->
+            <div id="exam-questions-list" class="space-y-4">
+                <!-- Generadas dinámicamente por JS -->
+            </div>
+
+            <!-- Botón Entregar Examen -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p class="text-xs sm:text-sm text-slate-600">
+                    💡 <strong>Consejo antes de entregar:</strong> En las preguntas de decimales puedes usar coma o punto. En el número de ordenadores, recuerda escribir solo equipos completos (números enteros).
+                </p>
+                <button onclick="gradeExam()" id="btn-submit-exam" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-8 py-4 rounded-xl shadow-lg shadow-emerald-600/25 transition-all text-base">
+                    <i data-lucide="check-check" class="w-5 h-5"></i>
+                    <span>Corregir Examen y Obtener Nota</span>
+                </button>
+            </div>
+
+            <!-- Historial de Exámenes Realizados -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                        <i data-lucide="history" class="w-5 h-5 text-blue-600"></i>
+                        Historial de tus intentos guardados
+                    </h3>
+                    <button onclick="clearHistory()" class="text-xs text-rose-600 hover:underline font-semibold">Borrar historial</button>
+                </div>
+                <div id="exam-history-container" class="text-xs sm:text-sm text-slate-600">
+                    <!-- Se actualiza con los intentos -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             SECCIÓN 6: CHULETA DE ESTUDIO Y EJEMPLOS
+             ========================================== -->
+        <section id="tab-chuleta" class="tab-content hidden fade-in space-y-6">
+            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200">
+                <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 mb-2">Resumen de Fórmulas para antes del Examen</h2>
+                <p class="text-sm text-slate-600 mb-6">Guía rápida para saber cuándo multiplicar y cuándo dividir sin dudar.</p>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 text-white text-xs uppercase">
+                                <th class="p-3.5 rounded-tl-xl">¿Qué te piden calcular?</th>
+                                <th class="p-3.5">Fórmula</th>
+                                <th class="p-3.5">¿Multiplicar o dividir?</th>
+                                <th class="p-3.5 rounded-tr-xl">Truco para acordarse</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 text-xs sm:text-sm">
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3.5 font-bold text-slate-900">Potencia Aparente (VA)</td>
+                                <td class="p-3.5 font-mono font-bold text-blue-700">VA = V × A</td>
+                                <td class="p-3.5"><span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded">Multiplicar</span></td>
+                                <td class="p-3.5 text-slate-600">La palabra <strong>Voltiamperio</strong> ya junta Voltio × Amperio.</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3.5 font-bold text-slate-900">Quitar incremento de protección (30 %)</td>
+                                <td class="p-3.5 font-mono font-bold text-indigo-700">VA disp. = VA / 1,30</td>
+                                <td class="p-3.5"><span class="bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded">Dividir</span></td>
+                                <td class="p-3.5 text-slate-600">Para deshacer un incremento previo (+30 %), se divide entre 1,30.</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3.5 font-bold text-slate-900">Potencia Activa Real (W)</td>
+                                <td class="p-3.5 font-mono font-bold text-emerald-700">W = VA × f.d.p.</td>
+                                <td class="p-3.5"><span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">Multiplicar</span></td>
+                                <td class="p-3.5 text-slate-600">Los W siempre son menos que los VA. Al multiplicar por 0,6 o 0,8 el número se hace más pequeño.</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3.5 font-bold text-slate-900">Factor de Potencia (f.d.p.)</td>
+                                <td class="p-3.5 font-mono font-bold text-purple-700">f.d.p. = W / VA</td>
+                                <td class="p-3.5"><span class="bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded">Dividir</span></td>
+                                <td class="p-3.5 text-slate-600">Tiene que dar menor que 1 (ej. 0,7). Divide el pequeño (W) entre el grande (VA).</td>
+                            </tr>
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3.5 font-bold text-slate-900">Número de Equipos</td>
+                                <td class="p-3.5 font-mono font-bold text-amber-700">Equipos = W disp. / W de 1 PC</td>
+                                <td class="p-3.5"><span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded">Dividir y truncar</span></td>
+                                <td class="p-3.5 text-slate-600">Repartes los W totales entre lo que gasta cada PC y <strong>redondeas siempre hacia abajo</strong>.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 3 Ejemplos Resueltos Adicionales -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+                    <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full">Ejemplo Resuelto 1 (Oficina)</span>
+                    <h3 class="font-bold text-slate-900 text-sm">SAI de 230 V, 6 A, f.d.p. 0,8 y protección del 25 % para PCs de 200 W</h3>
+                    <div class="bg-slate-50 p-3.5 rounded-xl font-mono text-xs space-y-1.5 text-slate-800 border border-slate-200">
+                        <div>1) 230 × 6 = <strong>1380 VA</strong></div>
+                        <div>2) 1380 / 1,25 = <strong>1104 VA disp.</strong></div>
+                        <div>3) 1104 × 0,8 = <strong>883,2 W disp.</strong></div>
+                        <div>4) 883,2 / 200 = <strong>4,41</strong></div>
+                        <div class="text-emerald-700 font-bold pt-1 border-t border-slate-200"> Solución: 4 equipos completos</div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+                    <span class="bg-purple-100 text-purple-800 text-xs font-bold px-2.5 py-1 rounded-full">Ejemplo Resuelto 2 (Servidor)</span>
+                    <h3 class="font-bold text-slate-900 text-sm">Un SAI de 3000 VA entrega 2100 W reales. ¿Cuál es su factor de potencia?</h3>
+                    <div class="bg-slate-50 p-3.5 rounded-xl font-mono text-xs space-y-1.5 text-slate-800 border border-slate-200">
+                        <div>Datos: W = 2100 | VA = 3000</div>
+                        <div>Fórmula: f.d.p. = W / VA</div>
+                        <div>Cálculo: 2100 / 3000 = <strong>0,7</strong></div>
+                        <div class="text-emerald-700 font-bold pt-1 border-t border-slate-200">Solución: f.d.p. = 0,7 (el 70 % es potencia útil)</div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3">
+                    <span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full">Ejemplo Resuelto 3 (Aula SMR)</span>
+                    <h3 class="font-bold text-slate-900 text-sm">SAI de 230 V, 16 A, f.d.p. 0,7 y protección del 30 % para equipos de 350 W</h3>
+                    <div class="bg-slate-50 p-3.5 rounded-xl font-mono text-xs space-y-1.5 text-slate-800 border border-slate-200">
+                        <div>1) 230 × 16 = <strong>3680 VA</strong></div>
+                        <div>2) 3680 / 1,30 = <strong>2830,77 VA disp.</strong></div>
+                        <div>3) 2830,77 × 0,7 = <strong>1981,54 W disp.</strong></div>
+                        <div>4) 1981,54 / 350 = <strong>5,66</strong></div>
+                        <div class="text-emerald-700 font-bold pt-1 border-t border-slate-200">Solución: 5 equipos completos</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- CALCULADORA DE BOLSILLO FLOTANTE -->
+    <div id="mini-calc-modal" class="hidden fixed bottom-5 right-5 z-50 w-72 bg-slate-900 text-white rounded-2xl shadow-2xl border border-slate-700 overflow-hidden fade-in">
+        <div class="bg-slate-800 px-4 py-2.5 flex items-center justify-between border-b border-slate-700">
+            <span class="text-xs font-bold text-blue-400 flex items-center gap-1.5">
+                <i data-lucide="calculator" class="w-4 h-4"></i> Calculadora Integrada
+            </span>
+            <button onclick="toggleMiniCalc()" class="text-slate-400 hover:text-white font-bold px-1.5 py-0.5 rounded hover:bg-slate-700">✕</button>
+        </div>
+        <div class="p-3.5 space-y-2.5">
+            <div class="bg-slate-950 p-3 rounded-xl text-right border border-slate-800">
+                <div id="mcalc-expr" class="font-mono text-[11px] text-slate-400 h-4 overflow-hidden"></div>
+                <div id="mcalc-screen" class="font-mono text-2xl font-bold text-white truncate">0</div>
+            </div>
+
+            <!-- Atajos rápidos para SAI -->
+            <div class="grid grid-cols-3 gap-1.5">
+                <button onclick="mcalcQuick('/1.3')" class="bg-blue-900/60 hover:bg-blue-800 text-blue-200 border border-blue-700/50 rounded-lg py-1.5 text-xs font-bold font-mono">÷ 1,30</button>
+                <button onclick="mcalcQuick('*0.6')" class="bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 border border-emerald-700/50 rounded-lg py-1.5 text-xs font-bold font-mono">× 0,6</button>
+                <button onclick="mcalcQuick('*0.7')" class="bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-700/50 rounded-lg py-1.5 text-xs font-bold font-mono">× 0,70</button>
+            </div>
+
+            <!-- Teclado numérico -->
+            <div class="grid grid-cols-4 gap-1.5 font-mono text-sm font-bold">
+                <button onclick="mcalcClear()" class="col-span-2 bg-rose-600/80 hover:bg-rose-600 text-white py-2 rounded-lg">C</button>
+                <button onclick="mcalcBack()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-lg">⌫</button>
+                <button onclick="mcalcInput('/')" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 py-2 rounded-lg">÷</button>
+
+                <button onclick="mcalcInput('7')" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-lg">7</button>
+                <button onclick="mcalcInput('8')" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-lg">8</button>
+                <button onclick="mcalcInput('9')" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-lg">9</button>
+                <button onclick="mcalcInput('*')" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 py-2 rounded-lg">×</button>
+
+                <button onclick="mcalcInput('4')" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-lg">4</button>
+                <button onclick="mcalcInput('5')" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-lg">5</button>
+                <button onclick="mcalcInput('6')" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-lg">6</button>
+                <button onclick="mcalcInput('-')" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 py-2 rounded-lg">−</button>
+
+                <button onclick="mcalcInput('1')" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-lg">1</button>
+                <button onclick="mcalcInput('2')" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-lg">2</button>
+                <button onclick="mcalcInput('3')" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-lg">3</button>
+                <button onclick="mcalcInput('+')" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 py-2 rounded-lg">+</button>
+
+                <button onclick="mcalcInput('0')" class="col-span-2 bg-slate-800 hover:bg-slate-700 py-2 rounded-lg">0</button>
+                <button onclick="mcalcInput('.')" class="bg-slate-800 hover:bg-slate-700 py-2 rounded-lg">,</button>
+                <button onclick="mcalcSolve()" class="bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg">=</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+            <div><strong>AulaSAI SMR</strong> · Simulador Educativo de Sistemas de Alimentación Ininterrumpida</div>
+            <div>Grado Medio en Sistemas Microinformáticos y Redes (SMR)</div>
+        </div>
+    </footer>
+
+    <!-- LÓGICA JAVASCRIPT COMPLETA -->
+    <script>
+        /* ==========================================
+           1. ESTADO GLOBAL Y PROGRESO LOCAL
+           ========================================== */
+        const STORAGE_KEY = 'aulasai_smr_progress_v2';
+        let state = {
+            easyMode: false,
+            theoryRead: true,
+            classStepsSeen: false,
+            calcUsed: false,
+            practiceSolved: { facil: 0, medio: 0, dificil: 0 },
+            examHistory: []
+        };
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    state = { ...state, ...parsed };
+                }
+            } catch (e) {}
+            updateProgressUI();
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (e) {}
+            updateProgressUI();
+        }
+
+        function updateProgressUI() {
+            let pts = 0;
+            if (state.theoryRead) pts += 15;
+            if (state.classStepsSeen) pts += 20;
+            if (state.calcUsed) pts += 15;
+            if (state.practiceSolved.facil > 0) pts += 10;
+            if (state.practiceSolved.medio > 0) pts += 10;
+            if (state.practiceSolved.dificil > 0) pts += 10;
+            if (state.examHistory.some(x => x.score >= 5)) pts += 20;
+
+            const pct = Math.min(100, pts);
+            const bar = document.getElementById('progress-bar');
+            const txt = document.getElementById('progress-text');
+            if (bar) bar.style.width = pct + '%';
+            if (txt) txt.textContent = pct + '%';
+        }
+
+        function fmt(num, dec = 2) {
+            if (Number.isInteger(num)) return num.toString();
+            return Number(num).toFixed(dec).replace('.', ',');
+        }
+
+        function parseNum(str) {
+            if (typeof str !== 'string') str = String(str || '');
+            return parseFloat(str.trim().replace(',', '.'));
+        }
+
+        /* ==========================================
+           2. NAVEGACIÓN ENTRE PESTAÑAS
+           ========================================== */
+        function switchTab(tabId) {
+            const tabs = ['teoria', 'ejercicio', 'calculadora', 'practica', 'examen', 'chuleta'];
+            tabs.forEach(t => {
+                const sec = document.getElementById('tab-' + t);
+                const btn = document.getElementById('tab-btn-' + t);
+                if (sec) sec.classList.add('hidden');
+                if (btn) {
+                    btn.className = 'tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-800 transition-all';
+                }
+            });
+
+            const activeSec = document.getElementById('tab-' + tabId);
+            const activeBtn = document.getElementById('tab-btn-' + tabId);
+            if (activeSec) activeSec.classList.remove('hidden');
+            if (activeBtn) {
+                activeBtn.className = 'tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-all bg-blue-600 text-white shadow-sm';
+            }
+
+            if (tabId === 'ejercicio') {
+                state.classStepsSeen = true;
+                saveState();
+            } else if (tabId === 'calculadora') {
+                state.calcUsed = true;
+                saveState();
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function markTheoryRead() {
+            state.theoryRead = true;
+            saveState();
+        }
+
+        /* ==========================================
+           3. BOTÓN "EXPLÍCAMELO MÁS FÁCIL"
+           ========================================== */
+        function toggleEasyMode() {
+            state.easyMode = !state.easyMode;
+            applyEasyMode();
+            saveState();
+        }
+
+        function applyEasyMode() {
+            const boxes = document.querySelectorAll('.eli5-box');
+            boxes.forEach(box => {
+                if (state.easyMode) {
+                    box.classList.remove('hidden');
+                } else {
+                    box.classList.add('hidden');
+                }
+            });
+
+            const banner = document.getElementById('easy-mode-banner');
+            const badge = document.getElementById('easy-mode-badge');
+            const btn = document.getElementById('btn-easy-mode');
+
+            if (state.easyMode) {
+                if (banner) banner.classList.remove('hidden');
+                if (badge) {
+                    badge.textContent = 'ON';
+                    badge.className = 'bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded text-[10px] font-extrabold';
+                }
+                if (btn) btn.classList.add('ring-2', 'ring-amber-400');
+            } else {
+                if (banner) banner.classList.add('hidden');
+                if (badge) {
+                    badge.textContent = 'OFF';
+                    badge.className = 'bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold';
+                }
+                if (btn) btn.classList.remove('ring-2', 'ring-amber-400');
+            }
+        }
+
+        function toggleCardEasy(elementId) {
+            const el = document.getElementById(elementId);
+            if (el) el.classList.toggle('hidden');
+        }
+
+        /* ==========================================
+           4. COMPARADOR 1,30 VS 0,70 Y PASOS DE CLASE
+           ========================================== */
+        function updateComparisonWidget() {
+            const va = parseFloat(document.getElementById('comp-va').value) || 2300;
+            const pct = parseFloat(document.getElementById('comp-pct').value) || 30;
+            const divFactor = 1 + (pct / 100);
+            const mulFactor = 1 - (pct / 100);
+
+            const resDiv = va / divFactor;
+            const resMul = va * mulFactor;
+
+            document.getElementById('comp-formula-div').textContent = `${fmt(va, 0)} / ${fmt(divFactor, 2)}`;
+            document.getElementById('comp-res-div').textContent = `${fmt(resDiv, 2)} VA`;
+
+            document.getElementById('comp-formula-mul').textContent = `${fmt(va, 0)} × ${fmt(mulFactor, 2)}`;
+            document.getElementById('comp-res-mul').textContent = `${fmt(resMul, 2)} VA`;
+        }
+
+        function showAllClassSteps() {
+            for (let i = 1; i <= 5; i++) {
+                const c = document.getElementById('step-card-' + i);
+                if (c) c.classList.remove('opacity-40');
+                const easy = document.getElementById('easy-step-' + i);
+                if (easy) easy.classList.remove('hidden');
+            }
+            state.classStepsSeen = true;
+            saveState();
+        }
+
+        function resetClassSteps() {
+            for (let i = 1; i <= 4; i++) {
+                const easy = document.getElementById('easy-step-' + i);
+                if (easy && !state.easyMode) easy.classList.add('hidden');
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        /* ==========================================
+           5. SIMULADOR / CALCULADORA DE SAI
+           ========================================== */
+        function loadClassPreset() {
+            document.getElementById('calc-v').value = 230;
+            document.getElementById('calc-a').value = 10;
+            document.getElementById('calc-fdp').value = 0.6;
+            document.getElementById('calc-pct').value = 30;
+            document.getElementById('calc-pc-w').value = 230;
+            const radioDiv = document.querySelector('input[name="calc-criterio"][value="divide"]');
+            if (radioDiv) radioDiv.checked = true;
+            runSaiCalculator();
+        }
+
+        function runSaiCalculator() {
+            const v = Math.max(1, parseFloat(document.getElementById('calc-v').value) || 0);
+            const a = Math.max(0.1, parseFloat(document.getElementById('calc-a').value) || 0);
+            const fdp = Math.min(1, Math.max(0.05, parseFloat(document.getElementById('calc-fdp').value) || 0.6));
+            const pct = Math.min(95, Math.max(0, parseFloat(document.getElementById('calc-pct').value) || 0));
+            const pcW = Math.max(1, parseFloat(document.getElementById('calc-pc-w').value) || 230);
+            const criterioEl = document.querySelector('input[name="calc-criterio"]:checked');
+            const mode = criterioEl ? criterioEl.value : 'divide';
+
+            const vaTotal = v * a;
+            const divFactor = 1 + (pct / 100);
+            const mulFactor = 1 - (pct / 100);
+
+            document.getElementById('crit-div-label-num').textContent = fmt(divFactor, 2);
+            document.getElementById('crit-mul-label-num').textContent = fmt(mulFactor, 2);
+
+            const lblDiv = document.getElementById('label-crit-div');
+            const lblMul = document.getElementById('label-crit-mul');
+            if (mode === 'divide') {
+                lblDiv.className = 'flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all bg-blue-50/60 border-blue-600';
+                lblMul.className = 'flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all bg-white border-slate-200 hover:bg-slate-50';
+            } else {
+                lblMul.className = 'flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all bg-blue-50/60 border-blue-600';
+                lblDiv.className = 'flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all bg-white border-slate-200 hover:bg-slate-50';
+            }
+
+            // Cálculos con ambos criterios
+            const vaDiv = vaTotal / divFactor;
+            const wDiv = vaDiv * fdp;
+            const eqDivExact = wDiv / pcW;
+            const eqDivFloor = Math.floor(eqDivExact + 1e-9);
+
+            const vaMul = vaTotal * mulFactor;
+            const wMul = vaMul * fdp;
+            const eqMulExact = wMul / pcW;
+            const eqMulFloor = Math.floor(eqMulExact + 1e-9);
+
+            const activeVa = mode === 'divide' ? vaDiv : vaMul;
+            const activeW = mode === 'divide' ? wDiv : wMul;
+            const activeExact = mode === 'divide' ? eqDivExact : eqMulExact;
+            const activeFloor = mode === 'divide' ? eqDivFloor : eqMulFloor;
+
+            document.getElementById('sim-step-1').textContent = `${fmt(v, 0)} × ${fmt(a, 1)} = ${fmt(vaTotal, 0)} VA`;
+
+            if (mode === 'divide') {
+                document.getElementById('sim-step-2-title').textContent = `Paso 2: Quitar incremento del ${pct} % (VA / ${fmt(divFactor, 2)})`;
+                document.getElementById('sim-step-2').textContent = `${fmt(vaTotal, 0)} / ${fmt(divFactor, 2)} = ${fmt(activeVa, 2)} VA`;
+            } else {
+                document.getElementById('sim-step-2-title').textContent = `Paso 2: Reserva directa del ${pct} % (VA × ${fmt(mulFactor, 2)})`;
+                document.getElementById('sim-step-2').textContent = `${fmt(vaTotal, 0)} × ${fmt(mulFactor, 2)} = ${fmt(activeVa, 2)} VA`;
+            }
+
+            document.getElementById('sim-step-3').textContent = `${fmt(activeVa, 2)} × ${fmt(fdp, 2)} = ${fmt(activeW, 2)} W`;
+            document.getElementById('sim-step-4').textContent = `${fmt(activeW, 2)} / ${fmt(pcW, 0)} = ${fmt(activeExact, 2)} equipos`;
+
+            document.getElementById('sim-final-pcs').textContent = activeFloor;
+            const usedW = activeFloor * pcW;
+            const leftoverW = Math.max(0, activeW - usedW);
+            document.getElementById('sim-power-summary').textContent =
+                `Consumo real de los ${activeFloor} equipos: ${fmt(usedW, 0)} W (Sobran ${fmt(leftoverW, 2)} W disponibles)`;
+
+            document.getElementById('sim-cmp-div-lbl').textContent = `/${fmt(divFactor, 2)}`;
+            document.getElementById('sim-cmp-div-val').textContent = `${eqDivFloor} PC (${fmt(eqDivExact, 2)})`;
+            document.getElementById('sim-cmp-mul-lbl').textContent = `×${fmt(mulFactor, 2)}`;
+            document.getElementById('sim-cmp-mul-val').textContent = `${eqMulFloor} PC (${fmt(eqMulExact, 2)})`;
+        }
+
+        /* ==========================================
+           6. MODO PRÁCTICA (3 NIVELES + PISTAS)
+           ========================================== */
+        let currentPractice = {
+            level: 'facil',
+            fields: [],
+            fullSolutionHtml: ''
+        };
+
+        function randItem(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function setPracticeLevel(lvl) {
+            currentPractice.level = lvl;
+            const btns = {
+                facil: document.getElementById('btn-lvl-facil'),
+                medio: document.getElementById('btn-lvl-medio'),
+                dificil: document.getElementById('btn-lvl-dificil')
+            };
+
+            Object.keys(btns).forEach(k => {
+                if (k === lvl) {
+                    btns[k].className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-blue-600 text-white shadow-sm';
+                } else {
+                    btns[k].className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all bg-slate-100 text-slate-700 hover:bg-slate-200';
+                }
+            });
+
+            const badge = document.getElementById('prac-badge');
+            if (lvl === 'facil') {
+                badge.textContent = 'NIVEL FÁCIL · Calcular VA y W';
+                badge.className = 'bg-emerald-100 text-emerald-800 text-xs font-extrabold px-3 py-1 rounded-full';
+            } else if (lvl === 'medio') {
+                badge.textContent = 'NIVEL MEDIO · Aplicar porcentaje de protección';
+                badge.className = 'bg-purple-100 text-purple-800 text-xs font-extrabold px-3 py-1 rounded-full';
+            } else {
+                badge.textContent = 'NIVEL DIFÍCIL · Ejercicio completo de examen';
+                badge.className = 'bg-blue-100 text-blue-800 text-xs font-extrabold px-3 py-1 rounded-full';
+            }
+
+            generatePracticeProblem();
+        }
+
+        function generatePracticeProblem() {
+            const lvl = currentPractice.level;
+            const v = 230;
+            const a = randItem([6, 8, 10, 12, 15, 16, 20]);
+            const fdp = randItem([0.6, 0.65, 0.7, 0.75, 0.8]);
+            const pct = randItem([20, 25, 30]);
+            const pcW = randItem([150, 200, 230, 250, 300]);
+
+            const va = v * a;
+            const divFactor = 1 + (pct / 100);
+            const vaDisp = Number((va / divFactor).toFixed(2));
+            const wSinProt = Number((va * fdp).toFixed(2));
+            const wDisp = Number((vaDisp * fdp).toFixed(2));
+            const eqExact = Number((wDisp / pcW).toFixed(2));
+            const eqFloor = Math.floor((wDisp / pcW) + 1e-9);
+
+            const stEl = document.getElementById('prac-statement');
+            const easyHelp = document.getElementById('prac-easy-help');
+            const fbEl = document.getElementById('prac-feedback');
+            const btnSol = document.getElementById('btn-show-sol');
+
+            fbEl.classList.add('hidden');
+            btnSol.classList.add('hidden');
+            if (!state.easyMode) easyHelp.classList.add('hidden');
+
+            if (lvl === 'facil') {
+                stEl.innerHTML = `Un SAI suministra <strong>${v} V</strong> y <strong>${a} A</strong>, con un factor de potencia de <strong>${fmt(fdp, 2)}</strong>. Calcula su <strong>Potencia Aparente (VA)</strong> y su <strong>Potencia Activa Real (W)</strong> sin aplicar márgenes.`;
+                easyHelp.innerHTML = `💡 <strong>Explicación sencilla:</strong> Primero multiplica los Voltios por los Amperios (${v} × ${a}) para hallar los VA. Luego multiplica esos VA por ${fmt(fdp, 2)} para quitar la "espuma" y hallar los Vatios (W).`;
+                currentPractice.fields = [
+                    { id: 'pf-0', label: '1. Potencia Aparente (VA)', unit: 'VA', expected: va, tol: 0.5, formula: 'VA = V × A', hint: `Multiplica ${v} V por ${a} A.` },
+                    { id: 'pf-1', label: '2. Potencia Activa Real (W)', unit: 'W', expected: wSinProt, tol: 0.5, formula: 'W = VA × f.d.p.', hint: `Multiplica los ${va} VA por el factor de potencia (${fmt(fdp, 2)}).` }
+                ];
+                currentPractice.fullSolutionHtml = `1) VA = ${v} × ${a} = <strong>${va} VA</strong><br>2) W = ${va} × ${fmt(fdp, 2)} = <strong>${fmt(wSinProt, 2)} W</strong>`;
+            } else if (lvl === 'medio') {
+                stEl.innerHTML = `Un SAI ofrece <strong>${v} V</strong> y <strong>${a} A</strong> con factor de potencia <strong>${fmt(fdp, 2)}</strong>. Aplicando el procedimiento de clase para <strong>eliminar un incremento del ${pct} %</strong>, calcula los VA totales, los VA disponibles y los W disponibles.`;
+                easyHelp.innerHTML = `💡 <strong>Explicación sencilla:</strong> Multiplica ${v} × ${a} para sacar los VA. Después <strong>divide entre 1,${pct}</strong> para quitar el incremento del ${pct} %. Por último, multiplica ese resultado por ${fmt(fdp, 2)} para pasarlo a Vatios (W).`;
+                currentPractice.fields = [
+                    { id: 'pf-0', label: '1. Potencia Aparente Total (VA)', unit: 'VA', expected: va, tol: 0.5, formula: 'VA = V × A', hint: `Multiplica ${v} × ${a}.` },
+                    { id: 'pf-1', label: `2. VA disponibles (quitando +${pct} %)`, unit: 'VA', expected: vaDisp, tol: 0.5, formula: `VA disp = VA / 1,${pct}`, hint: `Divide los ${va} VA entre 1,${pct} (recuerda: dividir elimina el incremento previo).` },
+                    { id: 'pf-2', label: '3. Potencia Activa Disponible (W)', unit: 'W', expected: wDisp, tol: 0.6, formula: 'W disp = VA disp × f.d.p.', hint: `Multiplica los VA disponibles (${fmt(vaDisp, 2)}) por ${fmt(fdp, 2)}.` }
+                ];
+                currentPractice.fullSolutionHtml = `1) VA = ${v} × ${a} = <strong>${va} VA</strong><br>2) VA disp = ${va} / 1,${pct} = <strong>${fmt(vaDisp, 2)} VA</strong><br>3) W disp = ${fmt(vaDisp, 2)} × ${fmt(fdp, 2)} = <strong>${fmt(wDisp, 2)} W</strong>`;
+            } else {
+                stEl.innerHTML = `Un SAI suministra <strong>${v} voltios</strong> y <strong>${a} amperios</strong>. Su factor de potencia es <strong>${fmt(fdp, 2)}</strong>. ¿Cuántos equipos completos de <strong>${pcW} W</strong> podemos conectar aplicando la protección del <strong>${pct} %</strong> vista en clase?`;
+                easyHelp.innerHTML = `💡 <strong>Explicación sencilla:</strong> Sigue los 5 pasos de clase: 1) ${v}×${a}, 2) Divide entre 1,${pct}, 3) Multiplica por ${fmt(fdp, 2)}, 4) Divide entre ${pcW} W y 5) Quédate solo con el número entero (redondea hacia abajo).`;
+                currentPractice.fields = [
+                    { id: 'pf-0', label: '1. Potencia Aparente Total (VA)', unit: 'VA', expected: va, tol: 0.5, formula: 'VA = V × A', hint: `Multiplica ${v} × ${a}.` },
+                    { id: 'pf-1', label: `2. VA disponibles (/ 1,${pct})`, unit: 'VA', expected: vaDisp, tol: 0.5, formula: `VA disp = VA / 1,${pct}`, hint: `Divide ${va} entre 1,${pct}.` },
+                    { id: 'pf-2', label: '3. Vatios disponibles (W)', unit: 'W', expected: wDisp, tol: 0.6, formula: 'W disp = VA disp × f.d.p.', hint: `Multiplica ${fmt(vaDisp, 2)} por ${fmt(fdp, 2)}.` },
+                    { id: 'pf-3', label: '4. Equipos COMPLETOS (redondeo abajo)', unit: 'equipos', expected: eqFloor, tol: 0.01, formula: 'Truncar(W disp / W equipo)', hint: `Divide ${fmt(wDisp, 2)} entre ${pcW} (da ${fmt(eqExact, 2)}) y redondea SIEMPRE hacia abajo.` }
+                ];
+                currentPractice.fullSolutionHtml = `1) VA = ${v} × ${a} = <strong>${va} VA</strong><br>2) VA disp = ${va} / 1,${pct} = <strong>${fmt(vaDisp, 2)} VA</strong><br>3) W disp = ${fmt(vaDisp, 2)} × ${fmt(fdp, 2)} = <strong>${fmt(wDisp, 2)} W</strong><br>4) División = ${fmt(wDisp, 2)} / ${pcW} = ${fmt(eqExact, 2)} → <strong>${eqFloor} equipos completos</strong>`;
+            }
+
+            const container = document.getElementById('prac-inputs-container');
+            container.innerHTML = currentPractice.fields.map(f => `
+                <div id="wrap-${f.id}" class="bg-slate-50 p-4 rounded-xl border border-slate-200 transition-all">
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">${f.label}</label>
+                    <div class="relative">
+                        <input type="text" id="${f.id}" placeholder="Escribe el valor..." onkeydown="if(event.key==='Enter') checkPracticeAnswers()" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <span class="absolute right-3.5 top-2.5 text-xs font-bold text-slate-400">${f.unit}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function checkPracticeAnswers() {
+            const fbEl = document.getElementById('prac-feedback');
+            const btnSol = document.getElementById('btn-show-sol');
+            fbEl.classList.remove('hidden');
+
+            let allCorrect = true;
+            let firstErrorHint = '';
+
+            currentPractice.fields.forEach(f => {
+                const input = document.getElementById(f.id);
+                const wrap = document.getElementById('wrap-' + f.id);
+                const val = parseNum(input.value);
+                const ok = !isNaN(val) && Math.abs(val - f.expected) <= f.tol;
+
+                if (ok) {
+                    wrap.className = 'bg-emerald-50 p-4 rounded-xl border-2 border-emerald-500 transition-all';
+                } else {
+                    allCorrect = false;
+                    wrap.className = 'bg-rose-50 p-4 rounded-xl border-2 border-rose-400 transition-all';
+                    if (!firstErrorHint) {
+                        firstErrorHint = `
+                            <div class="font-bold text-rose-800 mb-1">❌ Revisa el campo «${f.label}»</div>
+                            <div class="text-rose-900"><strong>Fórmula que necesitas:</strong> <span class="font-mono bg-white px-2 py-0.5 rounded border border-rose-200 font-bold">${f.formula}</span></div>
+                            <div class="text-rose-800 mt-1"><strong>Pista:</strong> ${f.hint}</div>
+                        `;
+                    }
+                }
+            });
+
+            if (allCorrect) {
+                state.practiceSolved[currentPractice.level] = (state.practiceSolved[currentPractice.level] || 0) + 1;
+                saveState();
+                fbEl.className = 'rounded-xl p-5 border-2 border-emerald-500 bg-emerald-50 text-emerald-950 text-sm';
+                fbEl.innerHTML = `
+                    <div class="font-extrabold text-emerald-800 text-base mb-1">✅ ¡Excelente trabajo! Todos los pasos son correctos.</div>
+                    <div class="font-mono text-xs mt-2 bg-white p-3 rounded-lg border border-emerald-200">${currentPractice.fullSolutionHtml}</div>
+                `;
+                btnSol.classList.add('hidden');
+            } else {
+                fbEl.className = 'rounded-xl p-5 border-2 border-rose-400 bg-rose-50 text-rose-950 text-sm';
+                fbEl.innerHTML = firstErrorHint;
+                btnSol.classList.remove('hidden');
+            }
+        }
+
+        function showPracticeFullSolution() {
+            const fbEl = document.getElementById('prac-feedback');
+            fbEl.classList.remove('hidden');
+            fbEl.className = 'rounded-xl p-5 border-2 border-blue-400 bg-blue-50 text-slate-900 text-sm';
+            fbEl.innerHTML = `
+                <div class="font-extrabold text-blue-900 mb-2">📘 Solución explicada paso a paso:</div>
+                <div class="font-mono text-xs sm:text-sm space-y-1 bg-white p-4 rounded-xl border border-blue-200">${currentPractice.fullSolutionHtml}</div>
+            `;
+            currentPractice.fields.forEach(f => {
+                const input = document.getElementById(f.id);
+                if (input) input.value = fmt(f.expected, Number.isInteger(f.expected) ? 0 : 2);
+            });
+        }
+
+        /* ==========================================
+           7. MODO EXAMEN (10 PREGUNTAS + HISTORIAL)
+           ========================================== */
+        let examQuestions = [];
+
+        function startNewExam() {
+            const banner = document.getElementById('exam-result-banner');
+            const submitBtn = document.getElementById('btn-submit-exam');
+            if (banner) banner.classList.add('hidden');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+
+            examQuestions = [];
+            for (let i = 1; i <= 10; i++) {
+                const v = 230;
+                const a = randItem([5, 6, 8, 10, 12, 15, 16, 20]);
+                const fdp = randItem([0.6, 0.65, 0.7, 0.75, 0.8]);
+                const pct = randItem([20, 25, 30]);
+                const pcW = randItem([150, 200, 230, 250, 300]);
+
+                const va = v * a;
+                const divFactor = 1 + (pct / 100);
+                const vaDisp = Number((va / divFactor).toFixed(2));
+                const wReal = Number((va * fdp).toFixed(2));
+                const wDisp = Number((vaDisp * fdp).toFixed(2));
+                const eqExact = Number((wDisp / pcW).toFixed(2));
+                const eqFloor = Math.floor((wDisp / pcW) + 1e-9);
+
+                if (i <= 2) {
+                    examQuestions.push({
+                        num: i,
+                        tag: 'Potencia Aparente (VA)',
+                        text: `Un SAI suministra <strong>${v} V</strong> y <strong>${a} A</strong>. Calcula su <strong>Potencia Aparente (VA)</strong>.`,
+                        unit: 'VA',
+                        expected: va,
+                        tol: 0.5,
+                        explain: `Fórmula: VA = V × A → ${v} × ${a} = <strong>${va} VA</strong>.`
+                    });
+                } else if (i <= 4) {
+                    examQuestions.push({
+                        num: i,
+                        tag: 'Potencia Activa (W)',
+                        text: `Un SAI tiene <strong>${va} VA</strong> y un factor de potencia de <strong>${fmt(fdp, 2)}</strong>. ¿Cuántos <strong>Vatios (W)</strong> reales entrega?`,
+                        unit: 'W',
+                        expected: wReal,
+                        tol: 0.5,
+                        explain: `Fórmula: W = VA × f.d.p. → ${va} × ${fmt(fdp, 2)} = <strong>${fmt(wReal, 2)} W</strong>.`
+                    });
+                } else if (i === 5) {
+                    examQuestions.push({
+                        num: i,
+                        tag: 'Factor de Potencia',
+                        text: `Un SAI de <strong>${va} VA</strong> proporciona <strong>${fmt(wReal, 0)} W</strong> efectivos. ¿Cuál es su <strong>factor de potencia (f.d.p.)</strong>?`,
+                        unit: 'f.d.p.',
+                        expected: fdp,
+                        tol: 0.03,
+                        explain: `Fórmula: f.d.p. = W / VA → ${fmt(wReal, 0)} / ${va} = <strong>${fmt(fdp, 2)}</strong>.`
+                    });
+                } else if (i <= 7) {
+                    examQuestions.push({
+                        num: i,
+                        tag: `Protección del ${pct} %`,
+                        text: `Tenemos un SAI de <strong>${va} VA</strong>. Aplicando el procedimiento de clase para <strong>eliminar un incremento del ${pct} %</strong>, ¿cuántos <strong>VA disponibles</strong> quedan?`,
+                        unit: 'VA',
+                        expected: vaDisp,
+                        tol: 0.5,
+                        explain: `Fórmula: VA disponible = VA / 1,${pct} → ${va} / 1,${pct} = <strong>${fmt(vaDisp, 2)} VA</strong>.`
+                    });
+                } else {
+                    examQuestions.push({
+                        num: i,
+                        tag: 'Ejercicio Completo de Examen',
+                        text: `Un SAI suministra <strong>${v} V</strong> y <strong>${a} A</strong> con factor de potencia <strong>${fmt(fdp, 2)}</strong>. ¿Cuántos <strong>equipos completos de ${pcW} W</strong> podemos conectar aplicando la protección del <strong>${pct} %</strong> (/ 1,${pct})?`,
+                        unit: 'equipos completos',
+                        expected: eqFloor,
+                        tol: 0.01,
+                        explain: `1) VA = ${v}×${a} = ${va} VA · 2) VA disp = ${va}/1,${pct} = ${fmt(vaDisp, 2)} VA · 3) W disp = ${fmt(vaDisp, 2)}×${fmt(fdp, 2)} = ${fmt(wDisp, 2)} W · 4) ${fmt(wDisp, 2)}/${pcW} = ${fmt(eqExact, 2)} → Redondeando hacia abajo: <strong>${eqFloor} equipos completos</strong>.`
+                    });
+                }
+            }
+
+            const list = document.getElementById('exam-questions-list');
+            list.innerHTML = examQuestions.map((q, idx) => `
+                <div id="ex-card-${idx}" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 transition-all">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="bg-slate-900 text-white text-xs font-extrabold px-2.5 py-1 rounded-md">Pregunta ${q.num} de 10</span>
+                        <span class="bg-blue-50 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-full">${q.tag}</span>
+                    </div>
+                    <p class="text-sm sm:text-base text-slate-800 mb-4">${q.text}</p>
+                    <div class="flex items-center gap-3">
+                        <input type="text" id="ex-in-${idx}" placeholder="Tu respuesta..." class="w-44 bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 font-mono font-bold text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <span class="text-xs font-bold text-slate-500">${q.unit}</span>
+                    </div>
+                    <div id="ex-fb-${idx}" class="hidden mt-3 p-3.5 rounded-xl text-xs sm:text-sm"></div>
+                </div>
+            `).join('');
+        }
+
+        function gradeExam() {
+            let score = 0;
+            examQuestions.forEach((q, idx) => {
+                const inp = document.getElementById('ex-in-' + idx);
+                const card = document.getElementById('ex-card-' + idx);
+                const fb = document.getElementById('ex-fb-' + idx);
+                const val = parseNum(inp.value);
+
+                inp.disabled = true;
+                fb.classList.remove('hidden');
+
+                const ok = !isNaN(val) && Math.abs(val - q.expected) <= q.tol;
+                if (ok) {
+                    score++;
+                    card.className = 'bg-emerald-50/40 rounded-2xl p-5 shadow-sm border-2 border-emerald-500 transition-all';
+                    fb.className = 'mt-3 p-3.5 rounded-xl text-xs sm:text-sm bg-emerald-100 border border-emerald-300 text-emerald-950';
+                    fb.innerHTML = `<div class="font-bold text-emerald-800">✅ ¡Correcto! (+1 punto)</div><div class="mt-1">${q.explain}</div>`;
+                } else {
+                    card.className = 'bg-rose-50/40 rounded-2xl p-5 shadow-sm border-2 border-rose-400 transition-all';
+                    fb.className = 'mt-3 p-3.5 rounded-xl text-xs sm:text-sm bg-rose-100 border border-rose-300 text-rose-950';
+                    const userTxt = isNaN(val) ? 'En blanco' : fmt(val, 2);
+                    fb.innerHTML = `<div class="font-bold text-rose-800">❌ Incorrecto (Tu respuesta: ${userTxt} · Solución: ${fmt(q.expected, Number.isInteger(q.expected) ? 0 : 2)} ${q.unit})</div><div class="mt-1">${q.explain}</div>`;
+                }
+            });
+
+            const banner = document.getElementById('exam-result-banner');
+            banner.classList.remove('hidden');
+            const passed = score >= 5;
+            banner.className = `rounded-2xl p-6 shadow-lg border-2 flex flex-col sm:flex-row items-center justify-between gap-4 ${passed ? 'bg-emerald-950 text-white border-emerald-500' : 'bg-rose-950 text-white border-rose-500'}`;
+            banner.innerHTML = `
+                <div>
+                    <span class="text-xs font-extrabold uppercase px-3 py-1 rounded-full ${passed ? 'bg-emerald-500 text-slate-950' : 'bg-rose-500 text-white'}">
+                        ${passed ? '¡APROBADO!' : 'TOCA REPASAR'}
+                    </span>
+                    <h3 class="text-2xl font-extrabold mt-2">Nota obtenida: ${score} sobre 10</h3>
+                    <p class="text-xs sm:text-sm text-slate-300 mt-1">Revisa las correcciones detalladas en cada pregunta debajo.</p>
+                </div>
+                <button onclick="startNewExam()" class="bg-white text-slate-900 hover:bg-slate-100 font-extrabold px-5 py-3 rounded-xl text-xs sm:text-sm shrink-0">
+                    Repetir Examen con Nuevas Preguntas
+                </button>
+            `;
+
+            const submitBtn = document.getElementById('btn-submit-exam');
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const now = new Date();
+            state.examHistory.unshift({
+                date: now.toLocaleDateString('es-ES') + ' ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+                score: score
+            });
+            saveState();
+            renderExamHistory();
+            banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function renderExamHistory() {
+            const container = document.getElementById('exam-history-container');
+            if (!state.examHistory || state.examHistory.length === 0) {
+                container.innerHTML = '<p class="text-slate-400 italic">Todavía no has completado ningún examen.</p>';
+                return;
+            }
+            container.innerHTML = `
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    ${state.examHistory.map((h, i) => `
+                        <div class="p-3 rounded-xl border flex items-center justify-between ${h.score >= 5 ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}">
+                            <div>
+                                <div class="font-bold text-slate-800">Intento #${state.examHistory.length - i}</div>
+                                <div class="text-xs text-slate-500">${h.date}</div>
+                            </div>
+                            <span class="font-mono font-extrabold text-sm px-2.5 py-1 rounded-lg ${h.score >= 5 ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}">${h.score}/10</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function clearHistory() {
+            state.examHistory = [];
+            saveState();
+            renderExamHistory();
+        }
+
+        /* ==========================================
+           8. CALCULADORA DE BOLSILLO FLOTANTE
+           ========================================== */
+        let mcalcStr = '';
+
+        function toggleMiniCalc() {
+            const m = document.getElementById('mini-calc-modal');
+            if (m) m.classList.toggle('hidden');
+        }
+
+        function mcalcInput(c) {
+            mcalcStr += c;
+            updateMcalcScreen();
+        }
+
+        function mcalcQuick(op) {
+            mcalcStr += op;
+            mcalcSolve();
+        }
+
+        function mcalcClear() {
+            mcalcStr = '';
+            document.getElementById('mcalc-expr').textContent = '';
+            document.getElementById('mcalc-screen').textContent = '0';
+        }
+
+        function mcalcBack() {
+            mcalcStr = mcalcStr.slice(0, -1);
+            updateMcalcScreen();
+        }
+
+        function updateMcalcScreen() {
+            const scr = document.getElementById('mcalc-screen');
+            scr.textContent = mcalcStr ? mcalcStr.replace(/\./g, ',').replace(/\*/g, '×').replace(/\//g, '÷') : '0';
+        }
+
+        function mcalcSolve() {
+            if (!mcalcStr) return;
+            try {
+                const clean = mcalcStr.replace(/[^0-9+\-*/.]/g, '');
+                const res = Function('"use strict"; return (' + clean + ')')();
+                if (typeof res === 'number' && isFinite(res)) {
+                    document.getElementById('mcalc-expr').textContent = mcalcStr.replace(/\./g, ',') + ' =';
+                    const rounded = Math.round(res * 100) / 100;
+                    mcalcStr = String(rounded);
+                    document.getElementById('mcalc-screen').textContent = fmt(rounded, Number.isInteger(rounded) ? 0 : 2);
+                }
+            } catch (e) {
+                document.getElementById('mcalc-screen').textContent = 'Error';
+                mcalcStr = '';
+            }
+        }
+
+        /* ==========================================
+           9. INICIALIZACIÓN AL CARGAR LA PÁGINA
+           ========================================== */
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+            loadState();
+            applyEasyMode();
+            updateComparisonWidget();
+            runSaiCalculator();
+            setPracticeLevel('facil');
+            startNewExam();
+            renderExamHistory();
+        });
+    </script>
+</body>
+</html>
